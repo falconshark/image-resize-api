@@ -1,3 +1,4 @@
 {
-  "serverUrl": "Your api server url"
+  "serverUrl": "Your api server url",
+  "imageUrl": "Image for testing",
 }
