@@ -5,7 +5,9 @@ const settingFile = fs.readFileSync('./setting.json');
 const setting = JSON.parse(settingFile);
 fetch(setting.serverUrl, {
   body:JSON.stringify({
-    imageUrl: 'https://s3-ap-southeast-1.amazonaws.com/sardo-website/FRhZ7Gk2pzCY2gkruIJNbTqhj6RR8bFjCsrZWbL3.jpeg',
+    width: 500,
+    height: 300,
+    imageUrl: setting.imageUrl,
   }),
   headers: {
     'content-type': 'application/json',
