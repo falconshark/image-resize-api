@@ -3,7 +3,7 @@ Image Resize API
 
 Simple Web API for resize image easily.
 
-Powered by [php-image-resize](https://github.com/gumlet/php-image-resize) libary.
+Powered by [php-image-resize](https://github.com/gumlet/php-image-resize) library.
 
 
 API URL
