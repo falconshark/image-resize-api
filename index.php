@@ -15,7 +15,7 @@ if(!isset($image_data['imageUrl'])){
 }
 
 $image_url = $image_data['imageUrl'];
-$image_name = pathinfo($image_url)['basename'];
+$image_name = './temp_files/' . pathinfo($image_url)['basename'];
 
 //Check file size and type, if everything is OK, download it.
 if(!check_file_ok($image_url)){
@@ -28,7 +28,6 @@ file_put_contents($image_name, fopen($image_url, 'r'));
 //Resize image to fit size.
 try{
   if(!isset($image_data['width']) || !isset($image_data['height'])){
-    unlink($image_name);
     showError('Please input width and height which you want to crop to.');
     return;
   }
@@ -42,9 +41,10 @@ try{
   $height = $image_data['height'];
   $image->resizeToBestFit((int)$width, (int)$height, $allow_enlarge = TRUE);
   $image->save($image_name);
+  $type = pathinfo($image_name, PATHINFO_EXTENSION);
   $result = [
     'status' => 'Success',
-    'cropped_image_data' => base64_encode(file_get_contents($image_name)),
+    'cropped_image_data' => 'data:image/' . $type . ';base64,' . base64_encode(file_get_contents($image_name)),
   ];
   unlink($image_name);
   echo json_encode($result);
