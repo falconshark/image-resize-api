@@ -7,53 +7,37 @@ use \Gumlet\ImageResizeException;
 
 $post_data = file_get_contents('php://input');
 $image_data = json_decode($post_data, true);
-$image_url = $image_data['imageUrl'];
-$image_name = pathinfo($image_url)['basename'];
 
 //Check image url is existed.
 if(!isset($image_data['imageUrl'])){
-  $result = [
-    'status' => 'Failed',
-    'error_message' => 'Please provide the url of image.',
-  ];
-  echo json_encode($result);
+  showError('Please provide the url of image.');
   return;
 }
 
+$image_url = $image_data['imageUrl'];
+$image_name = pathinfo($image_url)['basename'];
+
 //Check file size and type, if everything is OK, download it.
 if(!check_file_ok($image_url)){
-  $result = [
-    'status' => 'Failed',
-    'error_message' => 'Input file should be an image, and the size should not larger than 500MB.',
-  ];
-  echo json_encode($result);
+  showError('Input file should be an image, and the size should not larger than 500MB.');
   return;
 }
+
 file_put_contents($image_name, fopen($image_url, 'r'));
 
 //Resize image to fit size.
 try{
-  $image = new ImageResize($image_name);
-
   if(!isset($image_data['width']) || !isset($image_data['height'])){
-    $result = [
-      'status' => 'Failed',
-      'error_message' => 'Please input width and height which you want to crop to.',
-    ];
     unlink($image_name);
-    echo json_encode($result);
+    showError('Please input width and height which you want to crop to.');
     return;
   }
   if(!is_numeric($image_data['width']) || !is_numeric($image_data['height'])){
-    $result = [
-      'status' => 'Failed',
-      'error_message' => 'Width and Height should be number.',
-    ];
     unlink($image_name);
-    echo json_encode($result);
+    showError('Width and Height should be number.');
     return;
   }
-
+  $image = new ImageResize($image_name);
   $width = $image_data['width'];
   $height = $image_data['height'];
   $image->resizeToBestFit((int)$width, (int)$height, $allow_enlarge = TRUE);
@@ -62,14 +46,24 @@ try{
     'status' => 'Success',
     'cropped_image_data' => base64_encode(file_get_contents($image_name)),
   ];
-  echo json_encode($result);
   unlink($image_name);
+  echo json_encode($result);
+
 } catch (ImageResizeException $e) {
+  unlink($image_name);
+  showError($e->getMessage());
+}
+
+/**
+* Function for show error mesage in JSON format.
+*
+* @param string $message The error message which should be displayed.
+*/
+function showError($message){
   $result = [
     'status' => 'Failed',
-    'error_message' => $e->getMessage(),
+    'error_message' => $message,
   ];
-  unlink($image_name);
   echo json_encode($result);
 }
 
