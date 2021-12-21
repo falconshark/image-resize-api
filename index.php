@@ -2,12 +2,13 @@
 header("Access-Control-Allow-Origin: *");
 header('Content-Type: application/json');
 require 'vendor/autoload.php';
+
 use \Gumlet\ImageResize;
 use \Gumlet\ImageResizeException;
 
 $router = new \Bramus\Router\Router();
 
-$route->get('/', function(){
+$router->get('/', function(){
   //Check the input for GET.
   if(!isset($_GET['imageUrl'])){
     show_error('Please provide the url of image.');
@@ -21,7 +22,7 @@ $route->get('/', function(){
     show_error('Width and Height should be number.');
     return;
   }
-}
+});
 
 $router->post('/', function() {
   $post_data = file_get_contents('php://input');
@@ -109,4 +110,3 @@ function check_file_ok($image_url){
   }
   return TRUE;
 }
-?>
