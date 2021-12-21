@@ -7,13 +7,29 @@ use \Gumlet\ImageResizeException;
 
 $router = new \Bramus\Router\Router();
 
+$route->get('/', function(){
+  //Check the input for GET.
+  if(!isset($_GET['imageUrl'])){
+    show_error('Please provide the url of image.');
+    return;
+  }
+  if(!isset($_GET['width']) || !isset($_GET['height'])){
+    show_error('Please input width and height which you want to crop to.');
+    return;
+  }
+  if(!is_numeric($_GET['width']) || !is_numeric($_GET['height'])){
+    show_error('Width and Height should be number.');
+    return;
+  }
+}
+
 $router->post('/', function() {
   $post_data = file_get_contents('php://input');
   $image_data = json_decode($post_data, true);
 
   //Check image url is existed.
   if(!isset($image_data['imageUrl'])){
-    showError('Please provide the url of image.');
+    show_error('Please provide the url of image.');
     return;
   }
 
@@ -22,7 +38,7 @@ $router->post('/', function() {
 
   //Check file size and type, if everything is OK, download it.
   if(!check_file_ok($image_url)){
-    showError('Input file should be an image, and the size should not larger than 500MB.');
+    show_error('Input file should be an image, and the size should not larger than 500MB.');
     return;
   }
 
@@ -31,12 +47,12 @@ $router->post('/', function() {
   //Resize image to fit size.
   try{
     if(!isset($image_data['width']) || !isset($image_data['height'])){
-      showError('Please input width and height which you want to crop to.');
+      show_error('Please input width and height which you want to crop to.');
       return;
     }
     if(!is_numeric($image_data['width']) || !is_numeric($image_data['height'])){
       unlink($image_name);
-      showError('Width and Height should be number.');
+      show_error('Width and Height should be number.');
       return;
     }
     $image = new ImageResize($image_name);
@@ -54,7 +70,7 @@ $router->post('/', function() {
 
   } catch (ImageResizeException $e) {
     unlink($image_name);
-    showError($e->getMessage());
+    show_error($e->getMessage());
   }
 });
 
@@ -65,7 +81,7 @@ $router->run();
 *
 * @param string $message The error message which should be displayed.
 */
-function showError($message){
+function show_error($message){
   $result = [
     'status' => 'Failed',
     'error_message' => $message,
