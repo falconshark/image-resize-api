@@ -5,54 +5,60 @@ require 'vendor/autoload.php';
 use \Gumlet\ImageResize;
 use \Gumlet\ImageResizeException;
 
-$post_data = file_get_contents('php://input');
-$image_data = json_decode($post_data, true);
+$router = new \Bramus\Router\Router();
 
-//Check image url is existed.
-if(!isset($image_data['imageUrl'])){
-  showError('Please provide the url of image.');
-  return;
-}
+$router->post('/', function() {
+  $post_data = file_get_contents('php://input');
+  $image_data = json_decode($post_data, true);
 
-$image_url = $image_data['imageUrl'];
-$image_name = './temp_files/' . pathinfo($image_url)['basename'];
-
-//Check file size and type, if everything is OK, download it.
-if(!check_file_ok($image_url)){
-  showError('Input file should be an image, and the size should not larger than 500MB.');
-  return;
-}
-
-file_put_contents($image_name, fopen($image_url, 'r'));
-
-//Resize image to fit size.
-try{
-  if(!isset($image_data['width']) || !isset($image_data['height'])){
-    showError('Please input width and height which you want to crop to.');
+  //Check image url is existed.
+  if(!isset($image_data['imageUrl'])){
+    showError('Please provide the url of image.');
     return;
   }
-  if(!is_numeric($image_data['width']) || !is_numeric($image_data['height'])){
+
+  $image_url = $image_data['imageUrl'];
+  $image_name = './temp_files/' . pathinfo($image_url)['basename'];
+
+  //Check file size and type, if everything is OK, download it.
+  if(!check_file_ok($image_url)){
+    showError('Input file should be an image, and the size should not larger than 500MB.');
+    return;
+  }
+
+  file_put_contents($image_name, fopen($image_url, 'r'));
+
+  //Resize image to fit size.
+  try{
+    if(!isset($image_data['width']) || !isset($image_data['height'])){
+      showError('Please input width and height which you want to crop to.');
+      return;
+    }
+    if(!is_numeric($image_data['width']) || !is_numeric($image_data['height'])){
+      unlink($image_name);
+      showError('Width and Height should be number.');
+      return;
+    }
+    $image = new ImageResize($image_name);
+    $width = $image_data['width'];
+    $height = $image_data['height'];
+    $image->resizeToBestFit((int)$width, (int)$height, $allow_enlarge = TRUE);
+    $image->save($image_name);
+    $type = pathinfo($image_name, PATHINFO_EXTENSION);
+    $result = [
+      'status' => 'Success',
+      'cropped_image_data' => 'data:image/' . $type . ';base64,' . base64_encode(file_get_contents($image_name)),
+    ];
     unlink($image_name);
-    showError('Width and Height should be number.');
-    return;
-  }
-  $image = new ImageResize($image_name);
-  $width = $image_data['width'];
-  $height = $image_data['height'];
-  $image->resizeToBestFit((int)$width, (int)$height, $allow_enlarge = TRUE);
-  $image->save($image_name);
-  $type = pathinfo($image_name, PATHINFO_EXTENSION);
-  $result = [
-    'status' => 'Success',
-    'cropped_image_data' => 'data:image/' . $type . ';base64,' . base64_encode(file_get_contents($image_name)),
-  ];
-  unlink($image_name);
-  echo json_encode($result);
+    echo json_encode($result);
 
-} catch (ImageResizeException $e) {
-  unlink($image_name);
-  showError($e->getMessage());
-}
+  } catch (ImageResizeException $e) {
+    unlink($image_name);
+    showError($e->getMessage());
+  }
+});
+
+$router->run();
 
 /**
 * Function for show error mesage in JSON format.
