@@ -1,6 +1,5 @@
 <?php
 header("Access-Control-Allow-Origin: *");
-header('Content-Type: application/json');
 require 'vendor/autoload.php';
 
 use \Gumlet\ImageResize;
@@ -8,6 +7,7 @@ use \Gumlet\ImageResizeException;
 
 $router = new \Bramus\Router\Router();
 
+/* Get Method */
 $router->get('/', function(){
   //Check the input for GET.
   if(!isset($_GET['imageUrl'])){
@@ -22,9 +22,43 @@ $router->get('/', function(){
     show_error('Width and Height should be number.');
     return;
   }
+
+  $image_url = $_GET['imageUrl'];
+  $image_name = './temp-files/' . pathinfo($image_url)['basename'];
+
+  //Check file size and type, if everything is OK, download it.
+  if(!check_file_ok($image_url)){
+    show_error('Input file should be an image, and the size should not larger than 500MB.');
+    return;
+  }
+
+  file_put_contents($image_name, fopen($image_url, 'r'));
+
+  try{
+    $image = new ImageResize($image_name);
+    $width = $_GET['width'];
+    $height = $_GET['height'];
+    $image->resizeToBestFit((int)$width, (int)$height, $allow_enlarge = TRUE);
+    $image->save($image_name);
+    $type = pathinfo($image_name, PATHINFO_EXTENSION);
+
+    header("Content-Type: {$type}");
+    header("Content-Length: " . strlen(file_get_contents($image_name)));
+    header("Cache-Control: public", true);
+    header("Pragma: public", true);
+    echo file_get_contents($image_name);
+    unlink($image_name);
+  } catch (ImageResizeException $e) {
+    unlink($image_name);
+    show_error($e->getMessage());
+  }
 });
 
+
+/* Post method */
+
 $router->post('/', function() {
+  header('Content-Type: application/json');
   $post_data = file_get_contents('php://input');
   $image_data = json_decode($post_data, true);
 

@@ -43,6 +43,15 @@ Usage
 
 You can call the API to resize image with post method. Currently it only accept remote image.
 
+Get cropped image by GET method:
+
+You can just use the this url to crop the image. This method will return an cropped image directly, not JSON result.
+
+https://resize.sardo.work/?imageUrl={image_url}&width={image_width}&height={image_height}
+
+
+Get cropped image by POST method:
+
 ```js
 fetch('https://apiserver.com', {
   body:JSON.stringify({
@@ -79,7 +88,7 @@ Otherwise it will return a json which contain error message. For example:
 Frontend Test
 -----------
 
-You can test the api function without browser, there are a pre-ready script at frontend-test folder. 
+You can test the api function without browser, there are a pre-ready script at frontend-test folder.
 It requires Node.js (Recommanded to use v10.x.x Version) to run.
 
 Before use the script, install the dependencies by npm, then copy the config file:
