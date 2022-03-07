@@ -139,7 +139,7 @@ function check_file_ok($image_url){
     return FALSE;
   }
   //If not image, return FALSE
-  if($file_type !== 'image/png' && $file_type !== 'image/gif' && $file_type !== 'image/jpeg' && $file_type !== 'image/jpg'){
+  if($file_type !== 'image/png' && $file_type !== 'image/gif' && $file_type !== 'image/jpeg' && $file_type !== 'image/jpg' && $file_type !== 'image/webp'){
     return FALSE;
   }
   return TRUE;
