@@ -9,22 +9,30 @@ $router = new \Bramus\Router\Router();
 
 /* Get Method */
 $router->get('/', function(){
+  $image_url = isset($_GET['imageUrl']) ? $_GET['imageUrl'] : null;
+  $width = isset($_GET['width']) ? $_GET['width'] : null;
+  $height = isset($_GET['height']) ? $_GET['height'] : null;
+  
   //Check the input for GET.
-  if(!isset($_GET['imageUrl'])){
+  if(!$image_url){
     show_error('Please provide the url of image.');
     return;
   }
-  if(!isset($_GET['width']) || !isset($_GET['height'])){
-    show_error('Please input width and height which you want to crop to.');
-    return;
-  }
-  if(!is_numeric($_GET['width']) || !is_numeric($_GET['height'])){
-    show_error('Width and Height should be number.');
+
+  if(!$width && !$height){
+    show_error('Please input width or height which you want to crop to.');
     return;
   }
 
-  $image_url = $_GET['imageUrl'];
-  $image_name = './temp-files/' . pathinfo($image_url)['basename'];
+  if($width && !is_numeric($width) || $height && !is_numeric($height)){
+    show_error('Width or Height should be number.');
+    return;
+  }
+
+  $folder_path = './temp-files/';
+  if (!is_dir($folder_path)) mkdir($folder_path, 0777, true);
+
+  $image_name = $folder_path . pathinfo($image_url)['basename'];
 
   //Check file size and type, if everything is OK, download it.
   if(!check_file_ok($image_url)){
@@ -36,13 +44,16 @@ $router->get('/', function(){
 
   try{
     $image = new ImageResize($image_name);
-    $width = $_GET['width'];
-    $height = $_GET['height'];
-    $image->resizeToBestFit((int)$width, (int)$height, $allow_enlarge = TRUE);
+    if($width && $height){
+      $image->resizeToBestFit((int)$width, (int)$height, $allow_enlarge = TRUE);
+    } else {
+      if($width) $image->resizeToWidth((int)$width, $allow_enlarge = TRUE);
+      if($height) $image->resizeToHeight((int)$height, $allow_enlarge = TRUE);
+    }
     $image->save($image_name);
     $type = pathinfo($image_name, PATHINFO_EXTENSION);
 
-    header("Content-Type: {$type}");
+    header("Content-Type: image/{$type}");
     header("Content-Length: " . strlen(file_get_contents($image_name)));
     header("Cache-Control: public", true);
     header("Pragma: public", true);
@@ -68,8 +79,11 @@ $router->post('/', function() {
     return;
   }
 
+  $folder_path = './temp_files/';
+  if (!is_dir($folder_path)) mkdir($folder_path, 0777, true);
+
   $image_url = $image_data['imageUrl'];
-  $image_name = './temp_files/' . pathinfo($image_url)['basename'];
+  $image_name = $folder_path . pathinfo($image_url)['basename'];
 
   //Check file size and type, if everything is OK, download it.
   if(!check_file_ok($image_url)){
@@ -81,19 +95,25 @@ $router->post('/', function() {
 
   //Resize image to fit size.
   try{
-    if(!isset($image_data['width']) || !isset($image_data['height'])){
-      show_error('Please input width and height which you want to crop to.');
+  $width = isset($image_data['width']) ? $image_data['width'] : null;
+  $height = isset($image_data['height']) ? $image_data['height'] : null;
+  
+    if(!$width && !$height){
+      show_error('Please input width or height which you want to crop to.');
       return;
     }
-    if(!is_numeric($image_data['width']) || !is_numeric($image_data['height'])){
+    if($width && !is_numeric($width) || $height && !is_numeric($height)){
       unlink($image_name);
       show_error('Width and Height should be number.');
       return;
     }
     $image = new ImageResize($image_name);
-    $width = $image_data['width'];
-    $height = $image_data['height'];
-    $image->resizeToBestFit((int)$width, (int)$height, $allow_enlarge = TRUE);
+    if($width && $height){
+      $image->resizeToBestFit((int)$width, (int)$height, $allow_enlarge = TRUE);
+    } else {
+      if($width) $image->resizeToWidth((int)$width, $allow_enlarge = TRUE);
+      if($height) $image->resizeToHeight((int)$height, $allow_enlarge = TRUE);
+    }
     $image->save($image_name);
     $type = pathinfo($image_name, PATHINFO_EXTENSION);
     $result = [
