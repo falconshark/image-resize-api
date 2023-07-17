@@ -30,13 +30,24 @@ Parameter
 All of the paramter is required, otherwise server will return error message.
 
 ### ImageUrl
-The url of image. Accept png, jpg and gif, and the file which not larger than 500MB.
+The url of image. Accept png, jpg, gif, and webp, and the file which not larger than 500MB.
 
 ### Width
 The width of resized image. Must be integer.
 
 ### Height
 The height of resized image. Must be integer.
+
+### Quality
+The quality of resized image.
+
+Must be an integer ranging from `0` to `100` :
+- 0 = no compression.
+- 1 = worst quality, smaller file.
+- 100 = best quality, biggest file.
+- default value is `85`
+
+This only applies to `JPG/JPEG` and `WEBP` image files.
 
 Usage
 -----------
@@ -47,7 +58,7 @@ Get cropped image by GET method:
 
 You can just use the this url to crop the image. This method will return an cropped image directly, not JSON result.
 
-https://resize.sardo.work/?imageUrl={image_url}&width={image_width}&height={image_height}
+https://resize.sardo.work/?imageUrl={image_url}&width={image_width}&height={image_height}&quality={image_quality}
 
 
 Get cropped image by POST method:
@@ -57,6 +68,7 @@ fetch('https://apiserver.com', {
   body:JSON.stringify({
     width: 500,
     height: 300,
+    quality: 50,
     imageUrl: 'http://example.com/image.png',
   }),
   headers: {
