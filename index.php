@@ -12,6 +12,7 @@ $router->get('/', function(){
   $image_url = isset($_GET['imageUrl']) ? $_GET['imageUrl'] : null;
   $width = isset($_GET['width']) ? $_GET['width'] : null;
   $height = isset($_GET['height']) ? $_GET['height'] : null;
+  $quality = isset($_GET['quality']) ? $_GET['quality'] : null;
   
   //Check the input for GET.
   if(!$image_url){
@@ -24,15 +25,15 @@ $router->get('/', function(){
     return;
   }
 
-  if($width && !is_numeric($width) || $height && !is_numeric($height)){
-    show_error('Width or Height should be number.');
+  if($width && !is_numeric($width) || $height && !is_numeric($height) || $quality && !is_numeric($quality)){
+    show_error('Width, Height, and Quality should be number.');
     return;
   }
 
   $folder_path = './temp-files/';
   if (!is_dir($folder_path)) mkdir($folder_path, 0777, true);
 
-  $image_name = $folder_path . pathinfo($image_url)['basename'];
+  $image_path = $folder_path . pathinfo($image_url)['basename'];
 
   //Check file size and type, if everything is OK, download it.
   if(!check_file_ok($image_url)){
@@ -40,34 +41,39 @@ $router->get('/', function(){
     return;
   }
 
-  file_put_contents($image_name, fopen($image_url, 'r'));
+  file_put_contents($image_path, fopen($image_url, 'r'));
 
   try{
-    $image = new ImageResize($image_name);
+    $image = new ImageResize($image_path);
     if($width && $height){
       $image->resizeToBestFit((int)$width, (int)$height, $allow_enlarge = TRUE);
     } else {
       if($width) $image->resizeToWidth((int)$width, $allow_enlarge = TRUE);
       if($height) $image->resizeToHeight((int)$height, $allow_enlarge = TRUE);
     }
-    $image->save($image_name);
-    $type = pathinfo($image_name, PATHINFO_EXTENSION);
+    $type = pathinfo($image_path, PATHINFO_EXTENSION);
+    if(preg_match('/jpe?g|webp/', $type) && $quality){
+      $image->save($image_path, null, (int)$quality);
+    } else {
+      $image->save($image_path);
+    }
 
+    $image_content = file_get_contents($image_path);
     header("Content-Type: image/{$type}");
-    header("Content-Length: " . strlen(file_get_contents($image_name)));
+    header("Content-Length: " . strlen($image_content));
     header("Cache-Control: public", true);
     header("Pragma: public", true);
-    echo file_get_contents($image_name);
-    unlink($image_name);
+    echo $image_content;
+    unlink($image_path);
+
   } catch (ImageResizeException $e) {
-    unlink($image_name);
+    unlink($image_path);
     show_error($e->getMessage());
   }
 });
 
 
 /* Post method */
-
 $router->post('/', function() {
   header('Content-Type: application/json');
   $post_data = file_get_contents('php://input');
@@ -83,7 +89,7 @@ $router->post('/', function() {
   if (!is_dir($folder_path)) mkdir($folder_path, 0777, true);
 
   $image_url = $image_data['imageUrl'];
-  $image_name = $folder_path . pathinfo($image_url)['basename'];
+  $image_path = $folder_path . pathinfo($image_url)['basename'];
 
   //Check file size and type, if everything is OK, download it.
   if(!check_file_ok($image_url)){
@@ -91,40 +97,45 @@ $router->post('/', function() {
     return;
   }
 
-  file_put_contents($image_name, fopen($image_url, 'r'));
+  file_put_contents($image_path, fopen($image_url, 'r'));
 
   //Resize image to fit size.
   try{
   $width = isset($image_data['width']) ? $image_data['width'] : null;
   $height = isset($image_data['height']) ? $image_data['height'] : null;
+  $quality = isset($image_data['quality']) ? $image_data['quality'] : null;
   
     if(!$width && !$height){
       show_error('Please input width or height which you want to crop to.');
       return;
     }
-    if($width && !is_numeric($width) || $height && !is_numeric($height)){
-      unlink($image_name);
-      show_error('Width and Height should be number.');
+    if($width && !is_numeric($width) || $height && !is_numeric($height) || $quality && !is_numeric($quality)){
+      unlink($image_path);
+      show_error('Width, Height, and Quality should be number.');
       return;
     }
-    $image = new ImageResize($image_name);
+    $image = new ImageResize($image_path);
     if($width && $height){
       $image->resizeToBestFit((int)$width, (int)$height, $allow_enlarge = TRUE);
     } else {
       if($width) $image->resizeToWidth((int)$width, $allow_enlarge = TRUE);
       if($height) $image->resizeToHeight((int)$height, $allow_enlarge = TRUE);
     }
-    $image->save($image_name);
-    $type = pathinfo($image_name, PATHINFO_EXTENSION);
+    $type = pathinfo($image_path, PATHINFO_EXTENSION);
+    if(preg_match('/jpe?g|webp/', $type) && $quality){
+      $image->save($image_path, null, (int)$quality);
+    } else {
+      $image->save($image_path);
+    }
     $result = [
       'status' => 'Success',
-      'cropped_image_data' => 'data:image/' . $type . ';base64,' . base64_encode(file_get_contents($image_name)),
+      'cropped_image_data' => 'data:image/' . $type . ';base64,' . base64_encode(file_get_contents($image_path)),
     ];
-    unlink($image_name);
+    unlink($image_path);
     echo json_encode($result);
 
   } catch (ImageResizeException $e) {
-    unlink($image_name);
+    unlink($image_path);
     show_error($e->getMessage());
   }
 });
@@ -150,16 +161,23 @@ function show_error($message){
 * @param string $image_url The url of image.
 */
 function check_file_ok($image_url){
-  $headers = get_headers($image_url, true);
-  $file_size = $headers['Content-Length'];
-  $file_type = $headers['Content-Type'];
+  $headers = array_change_key_case(get_headers($image_url, true), CASE_LOWER);
+
+  //if response code not 200, return RESPONSE CODE
+  if(substr($headers[0], 9, 3) != '200'){
+    show_error(substr($headers[0], 9));
+    exit;
+  }
+
+  $file_size = $headers['content-length'];
+  $file_type = $headers['content-type'];
 
   //If the file more then 500MB, return FALSE
   if(!$file_size || $file_size > 500000000){
     return FALSE;
   }
   //If not image, return FALSE
-  if($file_type !== 'image/png' && $file_type !== 'image/gif' && $file_type !== 'image/jpeg' && $file_type !== 'image/jpg' && $file_type !== 'image/webp'){
+  if(!preg_match('/image\/(png|jpe?g|gif|webp)/', $file_type)){
     return FALSE;
   }
   return TRUE;

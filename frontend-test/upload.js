@@ -7,6 +7,7 @@ fetch(setting.serverUrl, {
   body:JSON.stringify({
     width: 500,
     height: 300,
+    quality: 50,
     imageUrl: setting.imageUrl,
   }),
   headers: {
