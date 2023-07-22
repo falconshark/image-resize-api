@@ -86,6 +86,7 @@ If everything is OK, it will return a JSON which contain status and cropped imag
 
 ```js
 { status: 'Success',
+  filename: 'image-filename.jpg',
   cropped_image_data:
    '/9j/4AAQSkZJRgABAQAAAQABAAD//gA7Q1JFQVRPUjogZ2QtanBlZyB2MS4wICh1c2luZyBJSkcgSlBFRyB2OTApLCBxdWFsaXR5ID0gODUK/9sAQwAFAwQEBAMFBAQEBQUFBgcMCAcHBwcPCwsJDBEPEhIRDxERExYcFxMUGhURERghGBodHR8fHxMXIiQiHiQcHh8e/9sAQwEFBQUHBgcOCAgOHhQRFB4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4e/8IAEQgBLAHWAwEiAAIRAQMRAf/EABwAAAEFAQEBAAAAAAAAAAAAAAIAAQQFBgMHCP/EABkBAQEBAQEBAAAAAAAAAAAAAAABAgMEB...' }
 ```
@@ -94,7 +95,7 @@ The API **will not** keep your image.
 Otherwise it will return a json which contain error message. For example:
 ```js
 { status: 'Failed',
-  error_message": 'Please provide the url of image.'}
+  error_message: 'Please provide the url of image.'}
 ```
 
 Frontend Test
