@@ -21,7 +21,7 @@ $router->get('/', function(){
   }
 
   if(!$width && !$height){
-    show_error('Please input width or height which you want to crop to.');
+    show_error('Please input width or height which you want to resize to.');
     return;
   }
 
@@ -30,17 +30,17 @@ $router->get('/', function(){
     return;
   }
 
-  $folder_path = './temp-files/';
-  if (!is_dir($folder_path)) mkdir($folder_path, 0777, true);
-
-  $image_path = $folder_path . pathinfo($image_url)['basename'];
-
   //Check file size and type, if everything is OK, download it.
   if(!check_file_ok($image_url)){
     show_error('Input file should be an image, and the size should not larger than 500MB.');
     return;
   }
 
+  $folder_path = './temp-files/';
+  if (!is_dir($folder_path)) mkdir($folder_path, 0777, true);
+
+  $image_info = pathinfo(parse_url($image_url, PHP_URL_PATH));
+  $image_path = $folder_path . $image_info['basename'];
   file_put_contents($image_path, fopen($image_url, 'r'));
 
   try{
@@ -51,15 +51,17 @@ $router->get('/', function(){
       if($width) $image->resizeToWidth((int)$width, $allow_enlarge = TRUE);
       if($height) $image->resizeToHeight((int)$height, $allow_enlarge = TRUE);
     }
-    $type = pathinfo($image_path, PATHINFO_EXTENSION);
-    if(preg_match('/jpe?g|webp/', $type) && $quality){
+
+    if(preg_match('/jpe?g|webp/', $image_info['extension']) && $quality){
       $image->save($image_path, null, (int)$quality);
     } else {
       $image->save($image_path);
     }
+    $type = pathinfo($image_path, PATHINFO_EXTENSION);
 
     $image_content = file_get_contents($image_path);
     header("Content-Type: image/{$type}");
+    header('Content-disposition: inline; filename=' . $image_info['filename'] . ".$type");
     header("Content-Length: " . strlen($image_content));
     header("Cache-Control: public", true);
     header("Pragma: public", true);
@@ -85,11 +87,7 @@ $router->post('/', function() {
     return;
   }
 
-  $folder_path = './temp_files/';
-  if (!is_dir($folder_path)) mkdir($folder_path, 0777, true);
-
   $image_url = $image_data['imageUrl'];
-  $image_path = $folder_path . pathinfo($image_url)['basename'];
 
   //Check file size and type, if everything is OK, download it.
   if(!check_file_ok($image_url)){
@@ -97,16 +95,21 @@ $router->post('/', function() {
     return;
   }
 
+  $folder_path = './temp_files/';
+  if (!is_dir($folder_path)) mkdir($folder_path, 0777, true);
+
+  $image_info = pathinfo(parse_url($image_url, PHP_URL_PATH));
+  $image_path = $folder_path . pathinfo(parse_url($image_url, PHP_URL_PATH), PATHINFO_BASENAME);
   file_put_contents($image_path, fopen($image_url, 'r'));
 
   //Resize image to fit size.
   try{
-  $width = isset($image_data['width']) ? $image_data['width'] : null;
-  $height = isset($image_data['height']) ? $image_data['height'] : null;
-  $quality = isset($image_data['quality']) ? $image_data['quality'] : null;
+    $width = isset($image_data['width']) ? $image_data['width'] : null;
+    $height = isset($image_data['height']) ? $image_data['height'] : null;
+    $quality = isset($image_data['quality']) ? $image_data['quality'] : null;
   
     if(!$width && !$height){
-      show_error('Please input width or height which you want to crop to.');
+      show_error('Please input width or height which you want to resize to.');
       return;
     }
     if($width && !is_numeric($width) || $height && !is_numeric($height) || $quality && !is_numeric($quality)){
@@ -114,6 +117,7 @@ $router->post('/', function() {
       show_error('Width, Height, and Quality should be number.');
       return;
     }
+
     $image = new ImageResize($image_path);
     if($width && $height){
       $image->resizeToBestFit((int)$width, (int)$height, $allow_enlarge = TRUE);
@@ -121,14 +125,17 @@ $router->post('/', function() {
       if($width) $image->resizeToWidth((int)$width, $allow_enlarge = TRUE);
       if($height) $image->resizeToHeight((int)$height, $allow_enlarge = TRUE);
     }
-    $type = pathinfo($image_path, PATHINFO_EXTENSION);
-    if(preg_match('/jpe?g|webp/', $type) && $quality){
+
+    if(preg_match('/jpe?g|webp/', $image_info['extension']) && $quality){
       $image->save($image_path, null, (int)$quality);
     } else {
       $image->save($image_path);
     }
+    $type = pathinfo($image_path, PATHINFO_EXTENSION);
+
     $result = [
       'status' => 'Success',
+      'filename' => $image_info['filename'] . ".$type",
       'cropped_image_data' => 'data:image/' . $type . ';base64,' . base64_encode(file_get_contents($image_path)),
     ];
     unlink($image_path);
@@ -164,8 +171,8 @@ function check_file_ok($image_url){
   $headers = array_change_key_case(get_headers($image_url, true), CASE_LOWER);
 
   //if response code not 200, return RESPONSE CODE
-  if(substr($headers[0], 9, 3) != '200'){
-    show_error(substr($headers[0], 9));
+  if(substr(array_values($headers)[0], 9, 3) != '200'){
+    show_error(array_values($headers)[0]);
     exit;
   }
 
