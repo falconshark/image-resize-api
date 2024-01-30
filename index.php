@@ -176,7 +176,11 @@ function check_file_ok($image_url){
     exit;
   }
 
-  $file_size = $headers['content-length'];
+  //Fallback if the website do not provide the content length.
+  $file_size = 1;
+  if(isset($headers['content-length'])){
+    $file_size = $headers['content-length'];
+  }
   $file_type = $headers['content-type'];
 
   //If the file more then 500MB, return FALSE
