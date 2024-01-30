@@ -30,8 +30,11 @@ $router->get('/', function(){
     return;
   }
 
+  $image_res = @file_get_contents($image_url);
+  $headers = parse_header($http_response_header);
+
   //Check file size and type, if everything is OK, download it.
-  if(!check_file_ok($image_url)){
+  if(!check_file_ok($image_url, $headers)){
     show_error('Input file should be an image, and the size should not larger than 500MB.');
     return;
   }
@@ -41,7 +44,7 @@ $router->get('/', function(){
 
   $image_info = pathinfo(parse_url($image_url, PHP_URL_PATH));
   $image_path = $folder_path . $image_info['basename'];
-  file_put_contents($image_path, fopen($image_url, 'r'));
+  file_put_contents($image_path, $image_res);
 
   try{
     $image = new ImageResize($image_path);
@@ -88,9 +91,11 @@ $router->post('/', function() {
   }
 
   $image_url = $image_data['imageUrl'];
+  $image_res = @file_get_contents($image_url);
+  $headers = parse_header($http_response_header);
 
   //Check file size and type, if everything is OK, download it.
-  if(!check_file_ok($image_url)){
+  if(!check_file_ok($image_url, $headers)){
     show_error('Input file should be an image, and the size should not larger than 500MB.');
     return;
   }
@@ -100,7 +105,7 @@ $router->post('/', function() {
 
   $image_info = pathinfo(parse_url($image_url, PHP_URL_PATH));
   $image_path = $folder_path . pathinfo(parse_url($image_url, PHP_URL_PATH), PATHINFO_BASENAME);
-  file_put_contents($image_path, fopen($image_url, 'r'));
+  file_put_contents($image_path, $image_res);
 
   //Resize image to fit size.
   try{
@@ -150,6 +155,26 @@ $router->post('/', function() {
 $router->run();
 
 /**
+* Function to get formatted headers (with response code).
+*
+* @param array $headers The php headers to be parsed
+* @link https://www.php.net/manual/en/reserved.variables.httpresponseheader.php#117203
+*/
+function parse_header($headers){
+  $head = array();
+  foreach( $headers as $k=>$v ) {
+    $t = explode( ':', $v, 2 );
+    if ( isset($t[1]) ) {
+      $head[ strtolower(trim($t[0])) ] = trim( $t[1] );
+    } else {
+      $head[] = $v;
+      if( preg_match("#HTTP/[0-9\.]+\s+([0-9]+)#",$v, $out) ) $head['reponse_code'] = intval( $out[1] );
+    }
+  }
+  return $head;
+}
+
+/**
 * Function for show error mesage in JSON format.
 *
 * @param string $message The error message which should be displayed.
@@ -166,24 +191,19 @@ function show_error($message){
 * Function for check received file before download it.
 *
 * @param string $image_url The url of image.
+* @param array $headers List of response headers.
 */
-function check_file_ok($image_url){
-  $headers = array_change_key_case(get_headers($image_url, true), CASE_LOWER);
-
+function check_file_ok($image_url, $headers){
   //if response code not 200, return RESPONSE CODE
-  if(substr(array_values($headers)[0], 9, 3) != '200'){
-    show_error(array_values($headers)[0]);
+  if($headers['reponse_code'] != '200'){
+    show_error($headers[0]);
     exit;
   }
 
-  //Fallback if the website do not provide the content length.
-  $file_size = 1;
-  if(isset($headers['content-length'])){
-    $file_size = $headers['content-length'];
-  }
+  $file_size = isset($headers['content-length']) ? $headers['content-length'] : -1;
   $file_type = $headers['content-type'];
 
-  //If the file more then 500MB, return FALSE
+  //If the file more than 500MB, return FALSE
   if(!$file_size || $file_size > 500000000){
     return FALSE;
   }
