@@ -34,7 +34,7 @@ $router->get('/', function(){
   $headers = parse_header($http_response_header);
 
   //Check file size and type, if everything is OK, download it.
-  if(!check_file_ok($image_url, $headers)){
+  if(!check_file_ok($image_res, $headers)){
     show_error('Input file should be an image, and the size should not larger than 500MB.');
     return;
   }
@@ -95,7 +95,7 @@ $router->post('/', function() {
   $headers = parse_header($http_response_header);
 
   //Check file size and type, if everything is OK, download it.
-  if(!check_file_ok($image_url, $headers)){
+  if(!check_file_ok($image_res, $headers)){
     show_error('Input file should be an image, and the size should not larger than 500MB.');
     return;
   }
@@ -193,15 +193,18 @@ function show_error($message){
 * @param string $image_url The url of image.
 * @param array $headers List of response headers.
 */
-function check_file_ok($image_url, $headers){
+function check_file_ok($image_res, $headers){
   //if response code not 200, return RESPONSE CODE
   if($headers['reponse_code'] != '200'){
     show_error($headers[0]);
     exit;
   }
 
+  $finfo = new finfo(FILEINFO_MIME_TYPE);
+  $mime_type = $finfo->buffer($image_res);
+
   $file_size = isset($headers['content-length']) ? $headers['content-length'] : -1;
-  $file_type = $headers['content-type'];
+  $file_type = $mime_type !== false ? $mime_type : $headers['content-type'];
 
   //If the file more than 500MB, return FALSE
   if(!$file_size || $file_size > 500000000){
